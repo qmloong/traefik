@@ -9,19 +9,22 @@ import (
 
 	"github.com/traefik/traefik/v2/pkg/config/runtime"
 	"github.com/traefik/traefik/v2/pkg/log"
+	"github.com/traefik/traefik/v2/pkg/metrics"
 	"github.com/traefik/traefik/v2/pkg/server/provider"
 	"github.com/traefik/traefik/v2/pkg/tcp"
 )
 
 // Manager is the TCPHandlers factory.
 type Manager struct {
-	configs map[string]*runtime.TCPServiceInfo
+	configs         map[string]*runtime.TCPServiceInfo
+	metricsRegistry metrics.Registry
 }
 
 // NewManager creates a new manager.
-func NewManager(conf *runtime.Configuration) *Manager {
+func NewManager(conf *runtime.Configuration, metricsRegistry metrics.Registry) *Manager {
 	return &Manager{
-		configs: conf.TCPServices,
+		configs:         conf.TCPServices,
+		metricsRegistry: metricsRegistry,
 	}
 }
 
@@ -45,8 +48,7 @@ func (m *Manager) BuildTCP(rootCtx context.Context, serviceName string) (tcp.Han
 	logger := log.FromContext(ctx)
 	switch {
 	case conf.LoadBalancer != nil:
-		loadBalancer := tcp.NewWRRLoadBalancer()
-
+		loadBalancer := tcp.NewLoadBalancerWithHealthCheck(serviceName, tcp.NewWRRLoadBalancer(), conf.HTTPHealthCheck, m.metricsRegistry)
 		if conf.LoadBalancer.TerminationDelay == nil {
 			defaultTerminationDelay := 100
 			conf.LoadBalancer.TerminationDelay = &defaultTerminationDelay
@@ -65,9 +67,10 @@ func (m *Manager) BuildTCP(rootCtx context.Context, serviceName string) (tcp.Han
 				continue
 			}
 
-			loadBalancer.AddServer(handler)
+			loadBalancer.AddServer(server.Address, handler)
 			logger.WithField(log.ServerName, name).Debugf("Creating TCP server %d at %s", name, server.Address)
 		}
+		loadBalancer.LaunchHealthCheck()
 		return loadBalancer, nil
 	case conf.Weighted != nil:
 		loadBalancer := tcp.NewWRRLoadBalancer()
@@ -77,7 +80,7 @@ func (m *Manager) BuildTCP(rootCtx context.Context, serviceName string) (tcp.Han
 				logger.Errorf("In service %q: %v", serviceQualifiedName, err)
 				return nil, err
 			}
-			loadBalancer.AddWeightServer(handler, service.Weight)
+			loadBalancer.AddWeightServer(service.Name, handler, service.Weight)
 		}
 		return loadBalancer, nil
 	default:

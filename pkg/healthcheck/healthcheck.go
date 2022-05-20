@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -122,6 +123,7 @@ type HealthCheck struct {
 
 // SetBackendsConfiguration set backends configuration.
 func (hc *HealthCheck) SetBackendsConfiguration(parentCtx context.Context, backends map[string]*BackendConfig) {
+	fmt.Println("alexmlqi: SetBackendsConfiguration")
 	hc.Backends = backends
 	if hc.cancel != nil {
 		hc.cancel()
@@ -216,12 +218,12 @@ func (hc *HealthCheck) checkServersLB(ctx context.Context, backend *BackendConfi
 // GetHealthCheck returns the health check which is guaranteed to be a singleton.
 func GetHealthCheck(registry metrics.Registry) *HealthCheck {
 	once.Do(func() {
-		singleton = newHealthCheck(registry)
+		singleton = NewHealthCheck(registry)
 	})
 	return singleton
 }
 
-func newHealthCheck(registry metrics.Registry) *HealthCheck {
+func NewHealthCheck(registry metrics.Registry) *HealthCheck {
 	return &HealthCheck{
 		Backends: make(map[string]*BackendConfig),
 		metrics: metricsHealthcheck{
@@ -266,8 +268,10 @@ func checkHealth(serverURL *url.URL, backend *BackendConfig) error {
 
 	defer resp.Body.Close()
 
+	body, err := ioutil.ReadAll(resp.Body)
+
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
-		return fmt.Errorf("received error status code: %v", resp.StatusCode)
+		return fmt.Errorf("received error status code: %v, body: %v, err: %v", resp.StatusCode, string(body), err)
 	}
 
 	return nil

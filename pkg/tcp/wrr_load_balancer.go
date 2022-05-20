@@ -8,6 +8,7 @@ import (
 )
 
 type server struct {
+	name string
 	Handler
 	weight int
 }
@@ -43,13 +44,28 @@ func (b *WRRLoadBalancer) ServeTCP(conn WriteCloser) {
 }
 
 // AddServer appends a server to the existing list.
-func (b *WRRLoadBalancer) AddServer(serverHandler Handler) {
+func (b *WRRLoadBalancer) AddServer(name string, serverHandler Handler) {
 	w := 1
-	b.AddWeightServer(serverHandler, &w)
+	b.AddWeightServer(name, serverHandler, &w)
+}
+
+// RemoveServer remove a server to the existing list.
+func (b *WRRLoadBalancer) RemoveServer(name string) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	for i, s := range b.servers {
+		if s.name == name {
+			b.servers = append(b.servers[0:i], b.servers[i+1:]...)
+			fmt.Printf("alexmlqi: %v\n", name)
+			fmt.Printf("alexmlqi server: %v\n", b.servers)
+			break
+		}
+	}
 }
 
 // AddWeightServer appends a server to the existing list with a weight.
-func (b *WRRLoadBalancer) AddWeightServer(serverHandler Handler, weight *int) {
+func (b *WRRLoadBalancer) AddWeightServer(name string, serverHandler Handler, weight *int) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -57,7 +73,7 @@ func (b *WRRLoadBalancer) AddWeightServer(serverHandler Handler, weight *int) {
 	if weight != nil {
 		w = *weight
 	}
-	b.servers = append(b.servers, server{Handler: serverHandler, weight: w})
+	b.servers = append(b.servers, server{name: name, Handler: serverHandler, weight: w})
 }
 
 func (b *WRRLoadBalancer) maxWeight() int {
@@ -91,20 +107,20 @@ func gcd(a, b int) int {
 
 func (b *WRRLoadBalancer) next() (Handler, error) {
 	if len(b.servers) == 0 {
-		return nil, fmt.Errorf("no servers in the pool")
+		return nil, fmt.Errorf("no balancers in the pool")
 	}
 
 	// The algo below may look messy, but is actually very simple
-	// it calculates the GCD  and subtracts it on every iteration, what interleaves servers
+	// it calculates the GCD  and subtracts it on every iteration, what interleaves balancers
 	// and allows us not to build an iterator every time we readjust weights
 
-	// Maximum weight across all enabled servers
+	// Maximum weight across all enabled balancers
 	max := b.maxWeight()
 	if max == 0 {
-		return nil, fmt.Errorf("all servers have 0 weight")
+		return nil, fmt.Errorf("all balancers have 0 weight")
 	}
 
-	// GCD across all enabled servers
+	// GCD across all enabled balancers
 	gcd := b.weightGcd()
 
 	for {

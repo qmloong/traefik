@@ -108,7 +108,7 @@ func TestLoadBalancing(t *testing.T) {
 			},
 		},
 		{
-			desc: "WeighedRoundRobin with all servers with 0 weight",
+			desc: "WeighedRoundRobin with all balancers with 0 weight",
 			serversWeight: map[string]int{
 				"h1": 0,
 				"h2": 0,
@@ -128,7 +128,7 @@ func TestLoadBalancing(t *testing.T) {
 			balancer := NewWRRLoadBalancer()
 			for server, weight := range test.serversWeight {
 				server := server
-				balancer.AddWeightServer(HandlerFunc(func(conn WriteCloser) {
+				balancer.AddWeightServer("", HandlerFunc(func(conn WriteCloser) {
 					_, err := conn.Write([]byte(server))
 					require.NoError(t, err)
 				}), &weight)

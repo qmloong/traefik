@@ -19,8 +19,14 @@ type TCPConfiguration struct {
 
 // TCPService holds a tcp service configuration (can only be of one type at the same time).
 type TCPService struct {
-	LoadBalancer *TCPServersLoadBalancer `json:"loadBalancer,omitempty" toml:"loadBalancer,omitempty" yaml:"loadBalancer,omitempty" export:"true"`
-	Weighted     *TCPWeightedRoundRobin  `json:"weighted,omitempty" toml:"weighted,omitempty" yaml:"weighted,omitempty" label:"-" export:"true"`
+	LoadBalancer    *TCPServersLoadBalancer `json:"loadBalancer,omitempty" toml:"loadBalancer,omitempty" yaml:"loadBalancer,omitempty" export:"true"`
+	Weighted        *TCPWeightedRoundRobin  `json:"weighted,omitempty" toml:"weighted,omitempty" yaml:"weighted,omitempty" label:"-" export:"true"`
+	HTTPHealthCheck *HTTPHealthCheck        `json:"httpHealthCheck,omitempty" toml:"httpHealthCheck,omitempty" yaml:"httpHealthCheck,omitempty" export:"true"`
+}
+
+type HTTPHealthCheck struct {
+	ServersTransport   *ServersTransport `json:"serversTransport,omitempty" yaml:"serversTransport,omitempty" toml:"serversTransport,omitempty" export:"true"`
+	ServerHealthCheck `json:",inline,omitempty" yaml:",inline,omitempty"`
 }
 
 // +k8s:deepcopy-gen=true

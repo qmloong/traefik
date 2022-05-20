@@ -59,7 +59,7 @@ func (r *RoundTripperManager) Update(newConfigs map[string]*dynamic.ServersTrans
 		}
 
 		var err error
-		r.roundTrippers[configName], err = createRoundTripper(newConfig)
+		r.roundTrippers[configName], err = CreateRoundTripper(newConfig)
 		if err != nil {
 			log.WithoutContext().Errorf("Could not configure HTTP Transport %s, fallback on default transport: %v", configName, err)
 			r.roundTrippers[configName] = http.DefaultTransport
@@ -72,7 +72,7 @@ func (r *RoundTripperManager) Update(newConfigs map[string]*dynamic.ServersTrans
 		}
 
 		var err error
-		r.roundTrippers[newConfigName], err = createRoundTripper(newConfig)
+		r.roundTrippers[newConfigName], err = CreateRoundTripper(newConfig)
 		if err != nil {
 			log.WithoutContext().Errorf("Could not configure HTTP Transport %s, fallback on default transport: %v", newConfigName, err)
 			r.roundTrippers[newConfigName] = http.DefaultTransport
@@ -98,11 +98,11 @@ func (r *RoundTripperManager) Get(name string) (http.RoundTripper, error) {
 	return nil, fmt.Errorf("servers transport not found %s", name)
 }
 
-// createRoundTripper creates an http.RoundTripper configured with the Transport configuration settings.
+// CreateRoundTripper creates an http.RoundTripper configured with the Transport configuration settings.
 // For the settings that can't be configured in Traefik it uses the default http.Transport settings.
 // An exception to this is the MaxIdleConns setting as we only provide the option MaxIdleConnsPerHost in Traefik at this point in time.
 // Setting this value to the default of 100 could lead to confusing behavior and backwards compatibility issues.
-func createRoundTripper(cfg *dynamic.ServersTransport) (http.RoundTripper, error) {
+func CreateRoundTripper(cfg *dynamic.ServersTransport) (http.RoundTripper, error) {
 	if cfg == nil {
 		return nil, errors.New("no transport configuration given")
 	}

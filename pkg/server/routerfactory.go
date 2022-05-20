@@ -81,7 +81,7 @@ func (f *RouterFactory) CreateRouters(rtConf *runtime.Configuration) (map[string
 	serviceManager.LaunchHealthCheck()
 
 	// TCP
-	svcTCPManager := tcp.NewManager(rtConf)
+	svcTCPManager := tcp.NewManager(rtConf, f.metricsRegistry)
 
 	middlewaresTCPBuilder := middlewaretcp.NewBuilder(rtConf.TCPMiddlewares)
 
